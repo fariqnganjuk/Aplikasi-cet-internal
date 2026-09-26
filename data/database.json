@@ -1,0 +1,267 @@
+{
+  "users": [
+    {
+      "id": "user-andi",
+      "name": "Andi Pratama",
+      "email": "andi@contoh.id",
+      "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "initials": "AP",
+      "avatarColor": "#18181B",
+      "isOnline": true,
+      "lastSeen": "Online",
+      "createdAt": "2026-08-27T13:29:18.079Z"
+    },
+    {
+      "id": "user-rina",
+      "name": "Rina Kartika",
+      "email": "rina@contoh.id",
+      "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "initials": "RK",
+      "avatarColor": "#3F3F46",
+      "isOnline": false,
+      "lastSeen": "2026-09-26T14:57:27.968Z",
+      "createdAt": "2026-09-01T13:29:18.080Z"
+    },
+    {
+      "id": "user-dimas",
+      "name": "Dimas Prasetyo",
+      "email": "dimas@contoh.id",
+      "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "initials": "DP",
+      "avatarColor": "#52525B",
+      "isOnline": false,
+      "lastSeen": "10 menit lalu",
+      "createdAt": "2026-09-06T13:29:18.080Z"
+    },
+    {
+      "id": "user-sari",
+      "name": "Sari Wulandari",
+      "email": "sari@contoh.id",
+      "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "initials": "SW",
+      "avatarColor": "#71717A",
+      "isOnline": false,
+      "lastSeen": "1 jam lalu",
+      "createdAt": "2026-09-11T13:29:18.080Z"
+    },
+    {
+      "id": "user-bayu",
+      "name": "Bayu Nugroho",
+      "email": "bayu@contoh.id",
+      "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "initials": "BN",
+      "avatarColor": "#27272A",
+      "isOnline": true,
+      "lastSeen": "Online",
+      "createdAt": "2026-09-16T13:29:18.080Z"
+    },
+    {
+      "id": "user-maya",
+      "name": "Maya Handayani",
+      "email": "maya@contoh.id",
+      "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "initials": "MH",
+      "avatarColor": "#3F3F46",
+      "isOnline": true,
+      "lastSeen": "Online",
+      "createdAt": "2026-09-18T13:29:18.080Z"
+    },
+    {
+      "id": "user-yoga",
+      "name": "Yoga Aditya",
+      "email": "yoga@contoh.id",
+      "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "initials": "YA",
+      "avatarColor": "#71717A",
+      "isOnline": false,
+      "lastSeen": "Kemarin",
+      "createdAt": "2026-09-21T13:29:18.080Z"
+    },
+    {
+      "id": "user-support",
+      "name": "Tim Support",
+      "email": "support@contoh.id",
+      "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "initials": "TS",
+      "avatarColor": "#18181B",
+      "isOnline": true,
+      "lastSeen": "Online",
+      "createdAt": "2026-08-17T13:29:18.080Z"
+    }
+  ],
+  "conversations": [
+    {
+      "id": "conv-andi-rina",
+      "participantIds": [
+        "user-andi",
+        "user-rina"
+      ],
+      "createdAt": "2026-09-23T09:00:00.000Z",
+      "updatedAt": "2026-09-26T14:57:24.183Z"
+    },
+    {
+      "id": "conv-andi-dimas",
+      "participantIds": [
+        "user-andi",
+        "user-dimas"
+      ],
+      "createdAt": "2026-09-23T08:00:00.000Z",
+      "updatedAt": "2026-09-26T09:15:00.000Z"
+    },
+    {
+      "id": "conv-andi-sari",
+      "participantIds": [
+        "user-andi",
+        "user-sari"
+      ],
+      "createdAt": "2026-09-25T14:00:00.000Z",
+      "updatedAt": "2026-09-25T16:20:00.000Z"
+    },
+    {
+      "id": "conv-andi-bayu",
+      "participantIds": [
+        "user-andi",
+        "user-bayu"
+      ],
+      "createdAt": "2026-09-25T11:00:00.000Z",
+      "updatedAt": "2026-09-25T13:45:00.000Z"
+    },
+    {
+      "id": "conv-andi-support",
+      "participantIds": [
+        "user-andi",
+        "user-support"
+      ],
+      "createdAt": "2026-09-23T10:00:00.000Z",
+      "updatedAt": "2026-09-23T11:10:00.000Z"
+    },
+    {
+      "id": "conv-rina-dimas",
+      "participantIds": [
+        "user-rina",
+        "user-dimas"
+      ],
+      "createdAt": "2026-09-25T10:00:00.000Z",
+      "updatedAt": "2026-09-25T15:30:00.000Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg-1",
+      "conversationId": "conv-andi-rina",
+      "senderId": "user-rina",
+      "recipientId": "user-andi",
+      "text": "Pagi, data pelanggan minggu ini sudah masuk?",
+      "createdAt": "2026-09-26T09:36:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-2",
+      "conversationId": "conv-andi-rina",
+      "senderId": "user-andi",
+      "recipientId": "user-rina",
+      "text": "Pagi. Sudah, tinggal dicek ulang.",
+      "createdAt": "2026-09-26T09:38:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-3",
+      "conversationId": "conv-andi-rina",
+      "senderId": "user-rina",
+      "recipientId": "user-andi",
+      "text": "Tolong dikabari kalau sudah beres ya",
+      "createdAt": "2026-09-26T09:40:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-4",
+      "conversationId": "conv-andi-rina",
+      "senderId": "user-andi",
+      "recipientId": "user-rina",
+      "text": "Siap, nanti saya cek ya",
+      "createdAt": "2026-09-26T09:42:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-5",
+      "conversationId": "conv-andi-dimas",
+      "senderId": "user-dimas",
+      "recipientId": "user-andi",
+      "text": "Halo Andi, ini ringkasan integrasi webhook.",
+      "createdAt": "2026-09-26T09:10:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-6",
+      "conversationId": "conv-andi-dimas",
+      "senderId": "user-dimas",
+      "recipientId": "user-andi",
+      "text": "Filenya sudah saya kirim",
+      "createdAt": "2026-09-26T09:15:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-7",
+      "conversationId": "conv-andi-sari",
+      "senderId": "user-sari",
+      "recipientId": "user-andi",
+      "text": "Oke, terima kasih",
+      "createdAt": "2026-09-25T16:20:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-8",
+      "conversationId": "conv-andi-bayu",
+      "senderId": "user-bayu",
+      "recipientId": "user-andi",
+      "text": "Meeting jadi jam 2?",
+      "createdAt": "2026-09-25T13:45:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-9",
+      "conversationId": "conv-andi-support",
+      "senderId": "user-support",
+      "recipientId": "user-andi",
+      "text": "Tiket sudah ditutup",
+      "createdAt": "2026-09-23T11:10:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-confidential-1",
+      "conversationId": "conv-rina-dimas",
+      "senderId": "user-rina",
+      "recipientId": "user-dimas",
+      "text": "Halo Dimas, ini pembicaraan rahasia internal tim backend.",
+      "createdAt": "2026-09-25T15:00:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-confidential-2",
+      "conversationId": "conv-rina-dimas",
+      "senderId": "user-dimas",
+      "recipientId": "user-rina",
+      "text": "Siap Rina, aman hanya kita berdua yang bisa baca.",
+      "createdAt": "2026-09-25T15:30:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-e50ed36e-e9ad-4e01-941e-0282ce1a7351",
+      "conversationId": "conv-andi-rina",
+      "senderId": "user-andi",
+      "recipientId": "user-rina",
+      "text": "p",
+      "createdAt": "2026-09-26T14:57:00.979Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-4d350739-a8af-4c3c-8488-718b289c29c9",
+      "conversationId": "conv-andi-rina",
+      "senderId": "user-rina",
+      "recipientId": "user-andi",
+      "text": "p",
+      "createdAt": "2026-09-26T14:57:24.183Z",
+      "isRead": true
+    }
+  ]
+}
