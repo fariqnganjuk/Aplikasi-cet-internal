@@ -46,7 +46,7 @@ export default function AuthScreen() {
         await api.register(name, email, password);
       }
       router.replace('/');
-      router.refresh();
+      window.location.href = '/';
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses permintaan.');
     } finally {

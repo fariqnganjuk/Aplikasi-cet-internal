@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ChatWindow } from './components/ChatWindow';
 import { NewChatModal } from './components/NewChatModal';
@@ -16,7 +15,6 @@ interface Props {
 }
 
 export default function App({ initialUser }: Props) {
-  const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const currentUser = initialUser;
 
@@ -81,9 +79,11 @@ export default function App({ initialUser }: Props) {
   };
 
   const handleLogout = async () => {
-    await api.logout();
-    router.replace('/login');
-    router.refresh();
+    try {
+      await api.logout();
+    } finally {
+      window.location.replace('/login');
+    }
   };
 
   const activeConversation =

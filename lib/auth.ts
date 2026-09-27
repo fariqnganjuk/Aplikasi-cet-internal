@@ -25,6 +25,11 @@ export async function getAuthUser(
     ? authorizationHeader.slice(7)
     : null;
   const token = readTokenFromCookieHeader(cookieHeader) ?? bearer;
+  return getUserByToken(token);
+}
+
+async function getUserByToken(token: string | null | undefined): Promise<DbUser | null> {
+  if (!token) return null;
   const userId = verifyToken(token);
   if (!userId) return null;
   return findUserById(userId);
@@ -32,7 +37,10 @@ export async function getAuthUser(
 
 export async function getSessionUser(): Promise<DbUser | null> {
   const store = await cookies();
-  return getAuthUser(store.get(AUTH_COOKIE)?.value ?? null, null);
+  // Nilai cookie ini sudah berupa token JWT mentah, BUKAN string header
+  // "nama=nilai". Karena itu harus diverifikasi langsung, bukan diteruskan
+  // ke readTokenFromCookieHeader() yang memformat header cookie.
+  return getUserByToken(store.get(AUTH_COOKIE)?.value);
 }
 
 /**
