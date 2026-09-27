@@ -92,7 +92,7 @@ Tanpa `POSTGRES_URL`, app memakai JSON lokal dan **tetap berfungsi penuh** — b
 ### 4a. Hostinger Node.js Hosting (Sesuai Link Pilihan Anda)
 
 1. Beli **Node.js Hosting** di Hostinger dan buat **MySQL Database** di hPanel. Catat kredensialnya (Host, Database Name, Username, Password).
-2. Push repo ke **GitHub pribadi**, pastikan `tec.akselera@gmail.com` ditambahkan sebagai **collaborator**.
+2. Push repo ke **GitHub pribadi**.
 3. Di Hostinger hPanel:
    - Hubungkan repo GitHub ke Node.js App.
    - **Build Command:** `npm run build`
