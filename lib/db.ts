@@ -101,9 +101,22 @@ export function verifyPassword(
 function buildSeed(): DatabaseSchema {
   const now = Date.now();
   const DAY = 86400000;
-  const at = (offsetDays: number, hours: number, minutes: number) => {
-    const d = new Date(now - offsetDays * DAY);
+
+  /**
+   * Timestamp seed harus selalu berada di MASA LAMPUNG.
+   *
+   * otherwise slot waktu (mis. "hari ini 09.42") bisa jatuh di masa depan
+   * bila seed dijalankan menjelang tengah malam, sehingga pesan baru yang
+   * dikirim user akan terurut di atas pesan lama (lastMessage & urutan
+   * bubble jadi salah). Karena itu setiap slot digeser mundur satu hari
+   * bila hasilnya ternyata belum terjadi.
+   */
+  const at = (daysAgo: number, hours: number, minutes: number) => {
+    const d = new Date(now - daysAgo * DAY);
     d.setHours(hours, minutes, 0, 0);
+    if (d.getTime() > now) {
+      d.setTime(d.getTime() - DAY);
+    }
     return d.toISOString();
   };
 
@@ -203,6 +216,7 @@ export function usesPostgres(): boolean {
 const globals = globalThis as unknown as {
   __akseleraPool?: Promise<Pool>;
   __akseleraMigration?: Promise<void>;
+  __akseleraRlsApplied?: boolean;
 };
 
 function getPool(): Promise<Pool> {
@@ -226,8 +240,27 @@ function runMigrations(): Promise<void> {
   if (!globals.__akseleraMigration) {
     globals.__akseleraMigration = (async () => {
       const pool = await getPool();
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS users (
+
+      // Semua DDL dijalankan defensif. Bila role yang terhubung bukan pemilik
+      // tabel (hanya punya hak SELECT/INSERT/UPDATE), statement DDL akan
+      // ditolak. Itu tidak boleh menggagalkan aplikasi: schema diasumsikan
+      // sudah dibuat oleh pemilik tabel, dan proteksi lapis aplikasi tetap
+      // berlaku. Kegagalan hanya dicatat sebagai peringatan.
+      const ddl = async (label: string, sql: string) => {
+        try {
+          await pool.query(sql);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (!alreadyWarned.has(label)) {
+            alreadyWarned.add(label);
+            console.warn(`[db] DDL "${label}" dilewati: ${message}`);
+          }
+        }
+      };
+
+      await ddl(
+        'users',
+        `CREATE TABLE IF NOT EXISTS users (
           id            TEXT PRIMARY KEY,
           name          TEXT NOT NULL,
           email         TEXT NOT NULL UNIQUE,
@@ -237,18 +270,24 @@ function runMigrations(): Promise<void> {
           is_online     BOOLEAN NOT NULL DEFAULT FALSE,
           last_seen     TEXT NOT NULL DEFAULT '',
           created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
+        )`
+      );
 
-        CREATE TABLE IF NOT EXISTS conversations (
+      await ddl(
+        'conversations',
+        `CREATE TABLE IF NOT EXISTS conversations (
           id         TEXT PRIMARY KEY,
           user_a_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           user_b_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           CONSTRAINT conversations_pair_uniq UNIQUE (user_a_id, user_b_id)
-        );
+        )`
+      );
 
-        CREATE TABLE IF NOT EXISTS messages (
+      await ddl(
+        'messages',
+        `CREATE TABLE IF NOT EXISTS messages (
           id              TEXT PRIMARY KEY,
           conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
           sender_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -256,105 +295,159 @@ function runMigrations(): Promise<void> {
           text            TEXT NOT NULL,
           created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           is_read         BOOLEAN NOT NULL DEFAULT FALSE
-        );
+        )`
+      );
 
-        CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages(conversation_id, created_at);
-        CREATE INDEX IF NOT EXISTS conversations_user_a_idx ON conversations(user_a_id);
-        CREATE INDEX IF NOT EXISTS conversations_user_b_idx ON conversations(user_b_id);
+      await ddl(
+        'index:messages_conversation',
+        'CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages(conversation_id, created_at)'
+      );
+      await ddl(
+        'index:conversations_user_a',
+        'CREATE INDEX IF NOT EXISTS conversations_user_a_idx ON conversations(user_a_id)'
+      );
+      await ddl(
+        'index:conversations_user_b',
+        'CREATE INDEX IF NOT EXISTS conversations_user_b_idx ON conversations(user_b_id)'
+      );
 
-        -- Helper: user id dari session aplikasi (di-set per request)
-        CREATE OR REPLACE FUNCTION app_user_id() RETURNS TEXT AS $$
+      // Helper: user id dari session aplikasi (di-set per request)
+      await ddl(
+        'fn:app_user_id',
+        `CREATE OR REPLACE FUNCTION app_user_id() RETURNS TEXT AS $$
           SELECT NULLIF(current_setting('app.user_id', true), '');
-        $$ LANGUAGE SQL STABLE;
+        $$ LANGUAGE SQL STABLE`
+      );
 
-        -- Helper: mode internal (seed / migrasi), bukan jalur request pengguna
-        CREATE OR REPLACE FUNCTION app_internal() RETURNS BOOLEAN AS $$
+      // Helper: mode internal (seed / migrasi), bukan jalur request pengguna
+      await ddl(
+        'fn:app_internal',
+        `CREATE OR REPLACE FUNCTION app_internal() RETURNS BOOLEAN AS $$
           SELECT COALESCE(current_setting('app.internal', true), '') = 'on';
-        $$ LANGUAGE SQL STABLE;
+        $$ LANGUAGE SQL STABLE`
+      );
 
-        -- Helper: user adalah peserta percakapan
-        CREATE OR REPLACE FUNCTION is_participant(p_user_a TEXT, p_user_b TEXT) RETURNS BOOLEAN AS $$
+      // Helper: user adalah peserta percakapan
+      await ddl(
+        'fn:is_participant',
+        `CREATE OR REPLACE FUNCTION is_participant(p_user_a TEXT, p_user_b TEXT) RETURNS BOOLEAN AS $$
           SELECT app_internal() OR app_user_id() = p_user_a OR app_user_id() = p_user_b;
-        $$ LANGUAGE SQL STABLE;
-      `);
+        $$ LANGUAGE SQL STABLE`
+      );
 
-      // Aktifkan RLS: FORCE agar policy berlaku anche untuk owner tabel.
-      await pool.query('ALTER TABLE conversations ENABLE ROW LEVEL SECURITY');
-      await pool.query('ALTER TABLE messages ENABLE ROW LEVEL SECURITY');
-      await pool.query('ALTER TABLE conversations FORCE ROW LEVEL SECURITY');
-      await pool.query('ALTER TABLE messages FORCE ROW LEVEL SECURITY');
-
-      await pool.query('DROP POLICY IF EXISTS conversations_select ON conversations');
-      await pool.query(`
-        CREATE POLICY conversations_select ON conversations FOR SELECT
-          USING (is_participant(user_a_id, user_b_id))
-      `);
-
-      await pool.query('DROP POLICY IF EXISTS conversations_insert ON conversations');
-      await pool.query(`
-        CREATE POLICY conversations_insert ON conversations FOR INSERT
-          WITH CHECK (is_participant(user_a_id, user_b_id))
-      `);
-
-      await pool.query('DROP POLICY IF EXISTS conversations_update ON conversations');
-      await pool.query(`
-        CREATE POLICY conversations_update ON conversations FOR UPDATE
-          USING (is_participant(user_a_id, user_b_id))
-          WITH CHECK (is_participant(user_a_id, user_b_id))
-      `);
-
-      await pool.query('DROP POLICY IF EXISTS messages_select ON messages');
-      await pool.query(`
-        CREATE POLICY messages_select ON messages FOR SELECT
-          USING (
-            app_internal()
-            OR app_user_id() = sender_id
-            OR app_user_id() = recipient_id
-            OR EXISTS (
-              SELECT 1 FROM conversations c
-              WHERE c.id = messages.conversation_id
-                AND (c.user_a_id = app_user_id() OR c.user_b_id = app_user_id())
-            )
-          )
-      `);
-
-      await pool.query('DROP POLICY IF EXISTS messages_insert ON messages');
-      await pool.query(`
-        CREATE POLICY messages_insert ON messages FOR INSERT
-          WITH CHECK (
-            app_internal()
-            OR (
-              app_user_id() = sender_id
-              AND EXISTS (
-                SELECT 1 FROM conversations c
-                WHERE c.id = messages.conversation_id
-                  AND (c.user_a_id = app_user_id() OR c.user_b_id = app_user_id())
-              )
-            )
-          )
-      `);
-
-      await pool.query('DROP POLICY IF EXISTS messages_update ON messages');
-      await pool.query(`
-        CREATE POLICY messages_update ON messages FOR UPDATE
-          USING (
-            app_internal()
-            OR app_user_id() = sender_id
-            OR app_user_id() = recipient_id
-            OR EXISTS (
-              SELECT 1 FROM conversations c
-              WHERE c.id = messages.conversation_id
-                AND (c.user_a_id = app_user_id() OR c.user_b_id = app_user_id())
-            )
-          )
-          WITH CHECK (app_internal() OR true)
-      `);
+      await applyRowLevelSecurity(pool);
     })().catch((err) => {
       globals.__akseleraMigration = null;
       throw err;
     });
   }
   return globals.__akseleraMigration;
+}
+
+const alreadyWarned = new Set<string>();
+
+/**
+ * Mengaktifkan Row Level Security beserta policy-nya.
+ *
+ * DDL policy (`ALTER TABLE ... FORCE ROW LEVEL SECURITY` dan `CREATE POLICY`)
+ * hanya boleh dijalankan oleh role pemilik tabel. Bila aplikasi terhubung
+ * dengan role terbatas (mis. only-grant tanpa ownership), statements ini
+ * akan ditolak. Kasus itu ditangani secara graceful:
+ *   - RLS diasumsikan sudah dikonfigurasi di sisi database, dan
+ *   - aplikasi tetap berjalan normal dengan proteksi lapis aplikasi.
+ *
+ * Catatan penting: RLS TIDAK berlaku untuk role SUPERUSER. Role default
+ * Neon/Vercel Postgres adalah pemilik tabel (bukan superuser), sehingga
+ * FORCE ROW LEVEL SECURITY tetap mengikatnya ke policy.
+ */
+async function applyRowLevelSecurity(pool: Pool): Promise<void> {
+  try {
+    await pool.query('ALTER TABLE conversations ENABLE ROW LEVEL SECURITY');
+    await pool.query('ALTER TABLE messages ENABLE ROW LEVEL SECURITY');
+    await pool.query('ALTER TABLE conversations FORCE ROW LEVEL SECURITY');
+    await pool.query('ALTER TABLE messages FORCE ROW LEVEL SECURITY');
+
+    await pool.query('DROP POLICY IF EXISTS conversations_select ON conversations');
+    await pool.query(`
+      CREATE POLICY conversations_select ON conversations FOR SELECT
+        USING (is_participant(user_a_id, user_b_id))
+    `);
+
+    await pool.query('DROP POLICY IF EXISTS conversations_insert ON conversations');
+    await pool.query(`
+      CREATE POLICY conversations_insert ON conversations FOR INSERT
+        WITH CHECK (is_participant(user_a_id, user_b_id))
+    `);
+
+    await pool.query('DROP POLICY IF EXISTS conversations_update ON conversations');
+    await pool.query(`
+      CREATE POLICY conversations_update ON conversations FOR UPDATE
+        USING (is_participant(user_a_id, user_b_id))
+        WITH CHECK (is_participant(user_a_id, user_b_id))
+    `);
+
+    await pool.query('DROP POLICY IF EXISTS messages_select ON messages');
+    await pool.query(`
+      CREATE POLICY messages_select ON messages FOR SELECT
+        USING (
+          app_internal()
+          OR app_user_id() = sender_id
+          OR app_user_id() = recipient_id
+          OR EXISTS (
+            SELECT 1 FROM conversations c
+            WHERE c.id = messages.conversation_id
+              AND (c.user_a_id = app_user_id() OR c.user_b_id = app_user_id())
+          )
+        )
+    `);
+
+    await pool.query('DROP POLICY IF EXISTS messages_insert ON messages');
+    await pool.query(`
+      CREATE POLICY messages_insert ON messages FOR INSERT
+        WITH CHECK (
+          app_internal()
+          OR (
+            app_user_id() = sender_id
+            AND EXISTS (
+              SELECT 1 FROM conversations c
+              WHERE c.id = messages.conversation_id
+                AND (c.user_a_id = app_user_id() OR c.user_b_id = app_user_id())
+            )
+          )
+        )
+    `);
+
+    await pool.query('DROP POLICY IF EXISTS messages_update ON messages');
+    await pool.query(`
+      CREATE POLICY messages_update ON messages FOR UPDATE
+        USING (
+          app_internal()
+          OR app_user_id() = sender_id
+          OR app_user_id() = recipient_id
+          OR EXISTS (
+            SELECT 1 FROM conversations c
+            WHERE c.id = messages.conversation_id
+              AND (c.user_a_id = app_user_id() OR c.user_b_id = app_user_id())
+          )
+        )
+        WITH CHECK (app_internal() OR true)
+    `);
+
+    globals.__akseleraRlsApplied = true;
+  } catch (err) {
+    globals.__akseleraRlsApplied = false;
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[db] Row Level Security tidak dapat dipasang oleh role ini (${message}). ` +
+        'Aplikasi tetap berjalan dengan proteksi lapis aplikasi. ' +
+        'Pastikan DDL policy dijalankan sekali oleh pemilik tabel.'
+    );
+  }
+}
+
+/** Status RLS untuk keperluan diagnostik. */
+export function isRlsApplied(): boolean {
+  return Boolean(globals.__akseleraRlsApplied);
 }
 
 let seedPromise: Promise<void> | null = null;
