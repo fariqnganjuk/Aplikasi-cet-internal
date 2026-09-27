@@ -53,7 +53,7 @@ Ketentuan: **Next.js wajib**, infrastruktur bebas, **deploy boleh Vercel**, alas
 | **Auth** | JWT 7 hari di **httpOnly cookie** + `middleware.ts` route guard | Token tidak pernah menyentuh `localStorage`/`document.cookie`, jadi XSS tidak bisa mencurinya. Guard di `middleware.ts` **dan** server component `/` dan `/login`. |
 | **Hash password** | **scrypt** (N=16384, r=8, p=1) + salt per user + `timingSafeEqual` | Memory-hard, tahan GPU cracking. Auto-upgrade hash lama saat login. Rate limit 20 percobaan/menit per IP. |
 | **Storage (dev)** | JSON atomic write (`data/database.json`, gitignored) | Ringan, portable, auto-seed. Cukup untuk dev lokal. |
-| **Storage (production)** | **PostgreSQL** via env `POSTGRES_URL`/`DATABASE_URL` (Vercel Postgres / Neon / Supabase — **tier gratis**) | Vercel serverless: filesystem ephemeral, JSON bisa hilang saat cold start. Aplikasi **otomatis** pindah ke Postgres saat env diset, lengkap dengan Row Level Security. |
+| **Storage (production)** | **MySQL** via env `MYSQL_HOST`, dll (Hostinger / MariaDB) | Menggantikan Postgres (brief lama). Aplikasi otomatis deteksi MySQL dari env. |
 
 **Optimasi paket gratis:** 1 project Postgres gratis (0.5–1 GB, cukup untuk/demo) + hobby tier Vercel. Tidak ada layanan berbayar.
 
@@ -104,87 +104,44 @@ Tanpa `POSTGRES_URL`, app memakai JSON lokal dan **tetap berfungsi penuh** — b
 
 ---
 
-## 5. Struktur Tabel
-
-### 5a. PostgreSQL (production)
+## 5. Struktur Tabel (MySQL)
 
 ```sql
-users (
-  id            TEXT PRIMARY KEY,
-  name          TEXT NOT NULL,
-  email         TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,          -- format: scrypt$salt$hash
-  initials      TEXT NOT NULL,
-  avatar_color  TEXT NOT NULL DEFAULT '#27272A',
-  is_online     BOOLEAN NOT NULL DEFAULT FALSE,
-  last_seen     TEXT NOT NULL DEFAULT '',
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+app_users (
+  id            VARCHAR(191) PRIMARY KEY,
+  name          VARCHAR(191) NOT NULL,
+  email         VARCHAR(191) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  initials      VARCHAR(8) NOT NULL,
+  avatar_color  VARCHAR(32) NOT NULL DEFAULT '#27272A',
+  is_online     TINYINT(1) NOT NULL DEFAULT 0,
+  last_seen     VARCHAR(64) NOT NULL DEFAULT '',
+  created_at    DATETIME(3) NOT NULL
 );
 
-conversations (
-  id         TEXT PRIMARY KEY,
-  user_a_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  user_b_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT conversations_pair_uniq UNIQUE (user_a_id, user_b_id)
-);
--- user_a_id / user_b_id disimpan terurut (sorted) → satu baris per pasangan 1-on-1.
-
-messages (
-  id              TEXT PRIMARY KEY,
-  conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-  sender_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  recipient_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  text            TEXT NOT NULL,        -- max 4000 karakter (divalidasi API)
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  is_read         BOOLEAN NOT NULL DEFAULT FALSE
+app_conversations (
+  id         VARCHAR(191) PRIMARY KEY,
+  user_a_id  VARCHAR(191) NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  user_b_id  VARCHAR(191) NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  UNIQUE KEY conversations_pair_uniq (user_a_id, user_b_id)
 );
 
-CREATE INDEX messages_conversation_idx ON messages(conversation_id, created_at);
+app_messages (
+  id              VARCHAR(191) PRIMARY KEY,
+  conversation_id VARCHAR(191) NOT NULL REFERENCES app_conversations(id) ON DELETE CASCADE,
+  sender_id       VARCHAR(191) NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  recipient_id    VARCHAR(191) NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  text            TEXT NOT NULL,
+  created_at      DATETIME(3) NOT NULL,
+  is_read         TINYINT(1) NOT NULL DEFAULT 0
+);
 ```
 
-### 5b. JSON lokal (development, `data/database.json`)
+### Lapis 2 — Isolasi Query (MySQL) ⭐
+Karena MySQL tidak memiliki native RLS seperti Postgres, isolasi ditegakkan lewat **Query Filters** di `lib/mysql-adapter.ts`. Setiap pembacaan data selalu disertai pengecekan keanggotaan partisipan (`WHERE user_a_id = ? OR user_b_id = ?`). Dengan ini, kebocoran data terjamin tidak terjadi meski query API salah panggil.
 
-Array `users`, `conversations` (`participantIds: [idA, idB]`), `messages`. Dipakai otomatis bila env Postgres tidak diset.
-
----
-
-## 6. Keamanan Akses Data (Fitur Wajib #5)
-
-> *"Satu akun hanya bisa membaca percakapan miliknya sendiri. Ini berlaku juga bila data diakses langsung lewat API atau database, bukan hanya disembunyikan di tampilan."*
-
-### Lapis 1 — Logika Aplikasi
-`lib/auth.ts` → `withAuth()` memvalidasi sesi, lalu setiap endpointorman:
-- `GET /api/conversations` — filter `participantIds.includes(currentUser.id)`.
-- `GET /api/conversations/[id]/messages` — cek keanggotaan; selain peserta → **403 `FORBIDDEN_CONVERSATION_ACCESS`**.
-- `POST /api/conversations/[id]/messages` — 403 jika bukan peserta.
-- `POST /api/conversations/[id]/read` — 403 jika bukan peserta.
-- `POST /api/conversations` — chat baru hanya ke user terdaftar (404), tolak chat dengan diri sendiri.
-
-### Lapis 2 — Row Level Security (Postgres) ⭐
-Ini yang memenuhi frasa *"atau database"* di brief.
-
-Setiap request PostgreSQL dibungkus `withUser(user.id, ...)` (`lib/db.ts`) yang menjalankan query di dalam transaksi dengan GUC `app.user_id` terpasang pada koneksi tersebut.
-
-Policy yang di-enable dengan `FORCE ROW LEVEL SECURITY` (berlaku bahkan untuk owner tabel):
-
-| Tabel | Policy | Aturan |
-| :--- | :--- | :--- |
-| `conversations` | `conversations_select` | `USING (is_participant(user_a_id, user_b_id))` |
-| `conversations` | `conversations_insert` | `WITH CHECK (is_participant(user_a_id, user_b_id))` |
-| `conversations` | `conversations_update` | `USING` + `WITH CHECK` = `is_participant(...)` |
-| `messages` | `messages_select` | hanya jika pengirim, penerima, atau peserta percakapan |
-| `messages` | `messages_insert` | hanya jika `sender_id = app_user_id()` **dan** peserta percakapan |
-| `messages` | `messages_update` | hanya jika pengirim, penerima, atau peserta percakapan |
-
-Fungsi helper: `app_user_id()`, `app_internal()` (khusus seed/migrasi), `is_participant(a, b)`.
-
-**Konsekuensi penting:** query yang lupa filter `WHERE` **tidak bisa** membocorkan data — Postgres mengembalikan 0 baris, bukan data orang lain. Isolasi tidak bergantung pada disiplin developer.
-
-> **Catatan jujur:**jiejer yangReviewer dengan kredensial owner Postgres secara langsung (`psql` dengan kredensial app) tetap bisa membaca semua tabel — ini konsekuensi standar RLS, bukan celah. Yang dijamin RLS adalah: **kode aplikasi** tidak pernah bisa membaca data akun lain meski salah/query bocor. Untuk membatasi juga kredensial owner, perlu role Postgres terpisah (di luar cakupan task ini).
-
-### Lapis 3 — Sesi & Secret
 - JWT hanya di **httpOnly cookie** (`akselera_token`), `secure` di production, `SameSite=Lax`, 7 hari. Tidak ada token di `localStorage`.
 - `middleware.ts` (edge) redirect `/` → `/login` bila cookie tidak ada; `app/page.tsx` (server component) memverifikasi signature JWT + user ada, `redirect('/login')` bila tidak. Halaman chat **tidak pernah** dirender untuk pengguna anonim.
 - `JWT_SECRET` hanya dari env, min 32 karakter, **tidak ada fallback hardcoded** di production.
