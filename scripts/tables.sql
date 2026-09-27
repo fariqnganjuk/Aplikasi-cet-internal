@@ -1,3 +1,12 @@
+-- =====================================================================
+-- Helper LOKAL saja (XAMPP Windows): setup database + tabel MySQL.
+-- TIDAK dipakai saat deploy Hostinger — di sana database managed dan
+-- tabel dibuat otomatis oleh lib/mysql-adapter.ts (CREATE TABLE IF NOT EXISTS).
+-- Cara pakai: pipe file ini ke mysql CLI.
+--   mysql -u root -p < scripts/tables.sql
+-- Catatan: DROP DATABASE di bawah HANYA aman untuk dev lokal (XAMPP).
+-- Jangan jalankan terhadap database production!
+-- =====================================================================
 DROP DATABASE IF EXISTS akselera_chat;
 CREATE DATABASE akselera_chat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE akselera_chat;

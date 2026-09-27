@@ -12,3 +12,9 @@ next-env.d.ts
 *.tsbuildinfo
 .vercel
 data/database.json
+scripts/*.out.txt
+scripts/setup-out.txt
+# Helper dev lokal (tidak perlu di production)
+scripts/setup-mysql.php
+scripts/probe.cjs
+scripts/check.php
