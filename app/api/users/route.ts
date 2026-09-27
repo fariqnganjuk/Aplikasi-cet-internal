@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromToken, loadDb } from '../../../lib/db';
+import { withAuth } from '../../../lib/auth';
+import { loadDb } from '../../../lib/db';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const currentUser = getUserFromToken(req.headers.get('authorization'));
-  if (!currentUser) {
-    return NextResponse.json({ error: 'Tidak ada token otorisasi yang valid.' }, { status: 401 });
-  }
+  return withAuth(req, async (currentUser) => {
+    const db = await loadDb();
+    const users = db.users
+      .filter((u) => u.id !== currentUser.id)
+      .map(({ passwordHash, ...safeUser }) => safeUser);
 
-  const db = loadDb();
-  const users = db.users
-    .filter((u) => u.id !== currentUser.id)
-    .map(({ passwordHash, ...safeUser }) => safeUser);
-
-  return NextResponse.json({ users });
+    return NextResponse.json({ users });
+  });
 }

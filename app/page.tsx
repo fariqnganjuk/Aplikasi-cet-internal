@@ -1,9 +1,21 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { getSessionUser } from '../lib/auth';
+import App from '../src/App';
+import type { User } from '../src/types/chat';
 
-import dynamic from 'next/dynamic';
+export const dynamic = 'force-dynamic';
 
-const App = dynamic(() => import('../src/App'), { ssr: false });
+// Aturan Wajib #1: halaman chat tidak bisa dibuka tanpa login.
+// Guard ini berjalan di server sebelum HTML apa pun dikirim ke browser.
+export default async function Page() {
+  const user = await getSessionUser();
 
-export default function Page() {
-  return <App />;
+  if (!user) {
+    redirect('/login');
+  }
+
+  const { passwordHash, ...safeUser } = user;
+  const initialUser: User = safeUser as unknown as User;
+
+  return <App initialUser={initialUser} />;
 }

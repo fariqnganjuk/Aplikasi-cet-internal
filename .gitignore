@@ -1,4 +1,6 @@
 node_modules/
+.next/
+out/
 build/
 dist/
 coverage/
@@ -6,3 +8,7 @@ coverage/
 *.log
 .env*
 !.env.example
+next-env.d.ts
+*.tsbuildinfo
+.vercel
+data/database.json

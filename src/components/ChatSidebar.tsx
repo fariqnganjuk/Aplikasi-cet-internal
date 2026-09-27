@@ -128,8 +128,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   <p className="text-xs font-bold leading-tight">{currentUser?.name}</p>
                   <p className="text-[11px] text-zinc-400 truncate mt-0.5">{currentUser?.email}</p>
                   <div className="flex items-center gap-1.5 mt-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] text-emerald-500 font-semibold uppercase tracking-wider">
+                    <span className="w-2 h-2 rounded-full bg-zinc-400" />
+                    <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">
                       Aktif Online
                     </span>
                   </div>
@@ -141,7 +141,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     onOpenSecurityAudit();
                   }}
                   className={`w-full text-left px-4 py-2.5 text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    isDark ? 'hover:bg-zinc-800 text-emerald-400' : 'hover:bg-zinc-50 text-emerald-700'
+                    isDark ? 'hover:bg-zinc-800 text-white' : 'hover:bg-zinc-100 text-black'
                   }`}
                 >
                   <ShieldCheck className="w-4 h-4 shrink-0" />
@@ -154,7 +154,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     onLogout();
                   }}
                   className={`w-full text-left px-4 py-2 text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    isDark ? 'hover:bg-rose-500/10 text-rose-400' : 'hover:bg-rose-50 text-rose-600'
+                    isDark ? 'hover:bg-zinc-800 text-white' : 'hover:bg-zinc-100 text-black'
                   }`}
                 >
                   <LogOut className="w-4 h-4 shrink-0" />
@@ -215,7 +215,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             {!search && (
               <button
                 onClick={onOpenNewChat}
-                className="mt-3 text-xs text-emerald-500 font-bold hover:underline cursor-pointer"
+                className="mt-3 text-xs text-zinc-500 font-bold hover:underline cursor-pointer"
               >
                 Mulai chat pertama
               </button>
@@ -257,7 +257,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     {conv.otherUser.initials}
                   </div>
                   {conv.otherUser.isOnline && (
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-950" />
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-zinc-500 ring-2 ring-white dark:ring-zinc-950" />
                   )}
                 </div>
 
@@ -330,13 +330,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         }`}
       >
         <span>Akselera.Tech Chat</span>
-        <button
-          onClick={onOpenSecurityAudit}
-          className="hover:underline flex items-center gap-1 cursor-pointer font-medium"
-        >
-          <ShieldCheck className="w-3 h-3 text-emerald-500" />
-          <span>Isolasi Aktif</span>
-        </button>
+          <button
+            onClick={onOpenSecurityAudit}
+            className="hover:underline flex items-center gap-1 cursor-pointer font-medium"
+          >
+            <ShieldCheck className="w-3 h-3 text-zinc-500" />
+            <span>Isolasi Aktif</span>
+          </button>
       </div>
     </aside>
   );

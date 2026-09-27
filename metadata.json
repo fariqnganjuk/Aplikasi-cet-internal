@@ -1,6 +1,0 @@
-{
-  "name": "Akselera.Tech Internal Chat",
-  "description": "Aplikasi Chat Internal Akselera.Tech dengan autentikasi aman, percakapan 1-on-1, dan tema light/dark mode.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

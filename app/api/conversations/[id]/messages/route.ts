@@ -1,85 +1,102 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { getUserFromToken, loadDb, saveDb, DbMessage } from '../../../../../lib/db';
+import { withAuth } from '../../../../../lib/auth';
+import {
+  getConversationParticipants,
+  insertMessage,
+  listMessages,
+  DbMessage,
+} from '../../../../../lib/db';
+import { notifyParticipants } from '../../../../../lib/events';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const MAX_TEXT_LENGTH = 4000;
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const currentUser = getUserFromToken(req.headers.get('authorization'));
-  if (!currentUser) {
-    return NextResponse.json({ error: 'Tidak ada token otorisasi yang valid.' }, { status: 401 });
-  }
+  return withAuth(req, async (currentUser) => {
+    const { id: conversationId } = await params;
 
-  const { id: conversationId } = await params;
-  const db = loadDb();
-  const conversation = db.conversations.find((c) => c.id === conversationId);
+    // Cek keanggotaan tanpa RLS supaya bisa dibalas 403 (bukan 404).
+    const participants = await getConversationParticipants(conversationId);
 
-  if (!conversation) {
-    return NextResponse.json({ error: 'Percakapan tidak ditemukan.' }, { status: 404 });
-  }
+    if (!participants) {
+      return NextResponse.json({ error: 'Percakapan tidak ditemukan.' }, { status: 404 });
+    }
 
-  // ATURAN WAJIB #5: Enforced at API Level
-  if (!conversation.participantIds.includes(currentUser.id)) {
-    return NextResponse.json(
-      {
-        error: 'Akses Ditolak: Anda tidak memiliki izin untuk melihat percakapan ini.',
-        code: 'FORBIDDEN_CONVERSATION_ACCESS',
-      },
-      { status: 403 }
-    );
-  }
+    // Aturan Wajib #5, lapis aplikasi.
+    if (!participants.includes(currentUser.id)) {
+      return NextResponse.json(
+        {
+          error: 'Akses Ditolak: Anda tidak memiliki izin untuk melihat percakapan ini.',
+          code: 'FORBIDDEN_CONVERSATION_ACCESS',
+        },
+        { status: 403 }
+      );
+    }
 
-  const messages = db.messages
-    .filter((m) => m.conversationId === conversationId)
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-  return NextResponse.json({ messages });
+    // Lapis database: query berjalan di scope user sehingga RLS
+    // hanya meloloskan pesan milik percakapan ini.
+    const messages = await listMessages(conversationId);
+    return NextResponse.json({ messages });
+  });
 }
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const currentUser = getUserFromToken(req.headers.get('authorization'));
-  if (!currentUser) {
-    return NextResponse.json({ error: 'Tidak ada token otorisasi yang valid.' }, { status: 401 });
-  }
+  return withAuth(req, async (currentUser) => {
+    const { id: conversationId } = await params;
+    const { text } = await req.json();
 
-  const { id: conversationId } = await params;
-  const { text } = await req.json();
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return NextResponse.json({ error: 'Isi pesan tidak boleh kosong.' }, { status: 400 });
+    }
+    if (text.length > MAX_TEXT_LENGTH) {
+      return NextResponse.json(
+        { error: `Pesan maksimal ${MAX_TEXT_LENGTH} karakter.` },
+        { status: 400 }
+      );
+    }
 
-  if (!text || typeof text !== 'string' || text.trim().length === 0) {
-    return NextResponse.json({ error: 'Isi pesan tidak boleh kosong.' }, { status: 400 });
-  }
+    const participants = await getConversationParticipants(conversationId);
 
-  const db = loadDb();
-  const conversation = db.conversations.find((c) => c.id === conversationId);
+    if (!participants) {
+      return NextResponse.json({ error: 'Percakapan tidak ditemukan.' }, { status: 404 });
+    }
 
-  if (!conversation) {
-    return NextResponse.json({ error: 'Percakapan tidak ditemukan.' }, { status: 404 });
-  }
+    if (!participants.includes(currentUser.id)) {
+      return NextResponse.json(
+        { error: 'Akses Ditolak: Anda bukan peserta percakapan ini.' },
+        { status: 403 }
+      );
+    }
 
-  if (!conversation.participantIds.includes(currentUser.id)) {
-    return NextResponse.json({ error: 'Akses Ditolak: Anda bukan peserta percakapan ini.' }, { status: 403 });
-  }
+    const recipientId = participants.find((id) => id !== currentUser.id)!;
+    const now = new Date().toISOString();
 
-  const recipientId = conversation.participantIds.find((id) => id !== currentUser.id)!;
-  const now = new Date().toISOString();
+    const newMessage: DbMessage = {
+      id: `msg-${crypto.randomUUID()}`,
+      conversationId,
+      senderId: currentUser.id,
+      recipientId,
+      text: text.trim(),
+      createdAt: now,
+      isRead: false,
+    };
 
-  const newMessage: DbMessage = {
-    id: `msg-${crypto.randomUUID()}`,
-    conversationId,
-    senderId: currentUser.id,
-    recipientId,
-    text: text.trim(),
-    createdAt: now,
-    isRead: false,
-  };
+    await insertMessage(newMessage);
 
-  db.messages.push(newMessage);
-  conversation.updatedAt = now;
-  saveDb(db);
+    notifyParticipants(participants, {
+      type: 'NEW_MESSAGE',
+      payload: { conversationId, message: newMessage },
+    });
 
-  return NextResponse.json({ message: newMessage }, { status: 201 });
+    return NextResponse.json({ message: newMessage }, { status: 201 });
+  });
 }

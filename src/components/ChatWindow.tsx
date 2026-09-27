@@ -103,14 +103,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
     // Also subscribe to Server-Sent Events
     const unsubscribe = api.subscribeToEvents((event) => {
-      if (event.type === 'NEW_MESSAGE' && event.payload?.conversationId === conversation.id) {
-        const newMsg = event.payload.message;
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === newMsg.id)) return prev;
-          return deduplicateMessages([...prev, newMsg]);
-        });
-        api.markAsRead(conversation.id).catch(() => {});
-      }
+      if (event.type !== 'NEW_MESSAGE') return;
+      const payload = event.payload as { conversationId?: string; message?: Message } | undefined;
+      if (payload?.conversationId !== conversation.id || !payload?.message) return;
+      const newMsg = payload.message;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMsg.id)) return prev;
+        return deduplicateMessages([...prev, newMsg]);
+      });
+      api.markAsRead(conversation.id).catch(() => {});
     });
 
     return () => {
@@ -216,7 +217,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           Daftar hanya berisi percakapan milik akun yang login.
         </p>
 
-        <div className="mt-8 flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium border bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+        <div className="mt-8 flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium border bg-zinc-500/5 text-zinc-500 border-zinc-500/20">
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Isolasi Data API & Database Aktif (Fitur Wajib #5)</span>
         </div>
@@ -259,7 +260,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               {conversation.otherUser.initials}
             </div>
             {conversation.otherUser.isOnline && (
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-950" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-zinc-500 ring-2 ring-white dark:ring-zinc-950" />
             )}
           </div>
 
@@ -273,7 +274,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               {conversation.otherUser.isOnline && (
                 <>
                   <span>•</span>
-                  <span className="text-emerald-500 font-medium">Online</span>
+                  <span className="text-zinc-500 font-medium">Online</span>
                 </>
               )}
             </div>
@@ -281,8 +282,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
 
         {/* Security badge in header */}
-        <div className="hidden sm:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border text-zinc-400 border-zinc-200 dark:border-zinc-800">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+        <div className="hidden sm:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border text-zinc-500 border-zinc-200 dark:border-zinc-800">
+          <ShieldCheck className="w-3.5 h-3.5 text-zinc-500" />
           <span>Tersimpan di database</span>
         </div>
       </header>
@@ -334,11 +335,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl relative shadow-xs transition-all ${
                       isMe
                         ? isDark
-                          ? 'bg-white text-black rounded-tr-xs' // Dark mode: white bubble with black text
-                          : 'bg-black text-white rounded-tr-xs' // Light mode: black bubble with white text
+                          ? 'bg-white text-black rounded-tr-xs'
+                          : 'bg-black text-white rounded-tr-xs'
                         : isDark
-                        ? 'bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-tl-xs' // Dark mode other: dark zinc bubble
-                        : 'bg-zinc-100 text-zinc-900 rounded-tl-xs' // Light mode other: light zinc bubble
+                        ? 'bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-tl-xs'
+                        : 'bg-zinc-100 text-zinc-900 rounded-tl-xs'
                     }`}
                   >
                     {/* Message Text */}
@@ -360,11 +361,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                       {isMe && (
                         <CheckCheck
                           className={`w-3.5 h-3.5 ${
-                            msg.isRead
-                              ? isDark
-                                ? 'text-black'
-                                : 'text-emerald-400'
-                              : 'opacity-70'
+                            msg.isRead ? (isDark ? 'text-black' : 'text-zinc-600') : 'opacity-70'
                           }`}
                         />
                       )}

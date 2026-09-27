@@ -1,5 +1,12 @@
 import type { Metadata } from 'next';
+import { Nunito } from 'next/font/google';
 import './globals.css';
+
+const nunito = Nunito({
+  subsets: ['latin'],
+  variable: '--font-nunito',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Akselera.Tech Internal Chat',
@@ -17,8 +24,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
-      <body className="font-['Nunito',sans-serif] antialiased">
+    <html lang="id" className={nunito.variable} suppressHydrationWarning>
+      <head>
+        <script
+          // Inline sebelum React hydrate agar tidak flash putih di dark mode.
+          // eslint-disable-next-line @next/next/no-sync-scripts
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('akselera_tech_theme');if(t!=='dark'&&t!=='light'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body className="font-sans antialiased bg-white text-black dark:bg-black dark:text-white">
         {children}
       </body>
     </html>

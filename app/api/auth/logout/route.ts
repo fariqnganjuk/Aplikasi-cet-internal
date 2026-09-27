@@ -1,17 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromToken, loadDb, saveDb } from '../../../../lib/db';
+import { getAuthUser } from '../../../../lib/auth';
+import { updateUserOnline } from '../../../../lib/db';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const user = getUserFromToken(req.headers.get('authorization'));
+  const user = await getAuthUser(
+    req.headers.get('cookie') ?? null,
+    req.headers.get('authorization')
+  );
+
   if (user) {
-    const db = loadDb();
-    const u = db.users.find((item) => item.id === user.id);
-    if (u) {
-      u.isOnline = false;
-      u.lastSeen = new Date().toISOString();
-      saveDb(db);
-    }
+    await updateUserOnline(user.id, false, new Date().toISOString());
   }
 
-  return NextResponse.json({ success: true, message: 'Berhasil keluar.' });
+  const res = NextResponse.json({ success: true, message: 'Berhasil keluar.' });
+  res.cookies.set('akselera_token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
+  return res;
 }

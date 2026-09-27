@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromToken } from '../../../../lib/db';
+import { getAuthUser } from '../../../../lib/auth';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const user = getUserFromToken(req.headers.get('authorization'));
+  const user = await getAuthUser(
+    req.headers.get('cookie') ?? null,
+    req.headers.get('authorization')
+  );
+
   if (!user) {
     return NextResponse.json({ error: 'Tidak ada token otorisasi yang valid.' }, { status: 401 });
   }

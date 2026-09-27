@@ -162,7 +162,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                         {user.initials}
                       </div>
                       {user.isOnline && (
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-zinc-500 ring-2 ring-white dark:ring-zinc-900" />
                       )}
                     </div>
 
@@ -194,7 +194,13 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
 
         {/* Error message */}
         {error && (
-          <div className="px-6 py-2 bg-amber-500/10 border-t border-amber-500/20 text-amber-500 text-xs text-center font-medium">
+          <div
+            className={`px-6 py-2 border-t text-xs text-center font-medium ${
+              isDark
+                ? 'bg-zinc-900 border-zinc-700 text-zinc-200'
+                : 'bg-zinc-100 border-zinc-300 text-black'
+            }`}
+          >
             {error}
           </div>
         )}

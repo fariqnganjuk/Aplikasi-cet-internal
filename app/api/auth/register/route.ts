@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { loadDb, saveDb, hashPassword, JWT_SECRET, DbUser } from '../../../../lib/db';
+import {
+  findUserByEmail,
+  createUser,
+  getJwtSecret,
+  hashPassword,
+  DbUser,
+} from '../../../../lib/db';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,21 +24,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Password minimal 6 karakter.' }, { status: 400 });
     }
 
-    const db = loadDb();
-    const existing = db.users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = await findUserByEmail(normalizedEmail);
     if (existing) {
-      return NextResponse.json({ error: 'Email sudah terdaftar. Silakan gunakan email lain.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Email sudah terdaftar. Silakan gunakan email lain.' },
+        { status: 400 }
+      );
     }
 
     const parts = name.trim().split(/\s+/);
-    const initials = parts.length > 1
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : parts[0].substring(0, 2).toUpperCase();
+    const initials =
+      parts.length > 1
+        ? (parts[0][0] + parts[1][0]).toUpperCase()
+        : parts[0].substring(0, 2).toUpperCase();
 
     const newUser: DbUser = {
       id: `user-${crypto.randomUUID()}`,
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       passwordHash: hashPassword(password),
       initials,
       avatarColor: '#27272A',
@@ -38,14 +51,22 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    db.users.push(newUser);
-    saveDb(db);
+    await createUser(newUser);
 
-    const token = jwt.sign({ userId: newUser.id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: newUser.id }, getJwtSecret(), { expiresIn: '7d' });
     const { passwordHash, ...safeUser } = newUser;
 
-    return NextResponse.json({ token, user: safeUser }, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Terjadi kesalahan' }, { status: 500 });
+    const res = NextResponse.json({ user: safeUser }, { status: 201 });
+    res.cookies.set('akselera_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    return res;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Terjadi kesalahan';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
