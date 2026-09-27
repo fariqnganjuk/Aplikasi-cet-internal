@@ -166,12 +166,12 @@ Karena MySQL tidak memiliki native RLS seperti Postgres, isolasi ditegakkan lewa
 
 | Aset | Implementasi |
 | :--- | :--- |
-| **Logo 2 versi** | `public/brand/logo-black.svg` (light mode) + `public/brand/logo-white.svg` (dark mode), dipilih otomatis oleh `AkseleraLogo.tsx`. |
+| **Logo 2 versi** | `public/brand/logo-black.png` (light mode) + `public/brand/logo-white.png` (dark mode), dipilih otomatis oleh `AkseleraLogo.tsx`. |
 | **Font** | Nunito via `next/font/google`, self-host, dipakai seluruh aplikasi. |
 | **Warna** | Hanya `#000000` / `#FFFFFF` + abu-abu netral Tailwind (`zinc`). Status online, unread, badge keamanan, dan pesan error semuanya monokrom — **tidak ada** warna aksen (hijau/amber/merah) di seluruh UI. |
 | **Light/Dark** | Toggle di dalam aplikasi, berlaku di **semua** halaman termasuk login. Pilihan tersimpan di `localStorage`. Inline script di `layout.tsx` menerapkan tema sebelum hydrate agar **tidak ada flash putih** di dark mode. |
 
-> **Catatan:** logo di `public/brand/` adalah versi rekonstruksi monokrom sesuai spesifikasi brand (hitam/putih). Bila Anda memiliki file logo asli dari folder "File Asset", cukup timpa kedua file SVG tersebut — tidak ada kode yang perlu diubah.
+> **Catatan:** kedua file logo di `public/brand/` adalah aset asli brand Akselera.Tech dari folder "File Asset", sudah di-crop dari kanvas 1920x1080 ke area konten (padding transparan dibuang) lalu dikonversi ke PNG. `logo-black.png` dipakai di light mode, `logo-white.png` di dark mode — dipilih otomatis oleh `AkseleraLogo.tsx` mengikuti state tema.
 
 ---
 

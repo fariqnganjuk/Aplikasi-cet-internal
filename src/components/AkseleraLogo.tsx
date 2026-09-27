@@ -12,12 +12,16 @@ const heights = {
   lg: 'h-11',
 };
 
+// Rasio banner 1426x383 (versi hitam) & 1476x394 (versi putih).
+// Dipakai hanya untuk mencegah layout shift sebelum gambar dimuat.
+const NATIVE = { width: 1426, height: 383 };
+
 export const AkseleraLogo: React.FC<AkseleraLogoProps> = ({
   theme = 'light',
   className = '',
   size = 'md',
 }) => {
-  const src = theme === 'dark' ? '/brand/logo-white.svg' : '/brand/logo-black.svg';
+  const src = theme === 'dark' ? '/brand/logo-white.png' : '/brand/logo-black.png';
 
   return (
     <div className={`inline-flex items-center select-none ${className}`}>
@@ -25,9 +29,9 @@ export const AkseleraLogo: React.FC<AkseleraLogoProps> = ({
       <img
         src={src}
         alt="Akselera.Tech"
-        width={240}
-        height={64}
-        className={`${heights[size]} w-auto max-w-[220px] object-contain`}
+        width={NATIVE.width}
+        height={NATIVE.height}
+        className={`${heights[size]} w-auto object-contain`}
         draggable={false}
       />
     </div>
