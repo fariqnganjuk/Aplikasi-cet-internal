@@ -87,20 +87,29 @@ Tanpa `POSTGRES_URL`, app memakai JSON lokal dan **tetap berfungsi penuh** — b
 
 ---
 
-## 4. Cara Deploy ke Vercel (Tinggal Nempel)
+## 4. Cara Deploy (Hostinger Node.js + MySQL atau Vercel)
 
-1. Push repo ke **GitHub pribadi**, tambahkan `tec.akselera@gmail.com` sebagai **collaborator**.
-2. [vercel.com/new](https://vercel.com/new) → import repo → framework **Next.js** (auto-detect).
-3. Tambahkan **Environment Variables**:
-   - `JWT_SECRET` — string acak min 32 karakter. **Wajib**, app menolak start di production tanpanya.
-   - `POSTGRES_URL` — connection string Postgres (Vercel Storage → Postgres, Neon, atau Supabase). **Disarankan** agar pesan persist setelah refresh/login ulang.
-4. **Deploy.** Saat boot pertama, app otomatis:
-   - membuat tabel `users`, `conversations`, `messages`,
-   - mengaktifkan **RLS** + policy,
-   - mengisi 8 akun demo + 6 percakapan + 11 pesan.
-   
-   **Tanpa langkah manual, tanpa migrasi manual, tanpa seeding manual.**
-5. Tempel URL ke checklist section 0.
+### 4a. Hostinger Node.js Hosting (Sesuai Link Pilihan Anda)
+
+1. Beli **Node.js Hosting** di Hostinger dan buat **MySQL Database** di hPanel. Catat kredensialnya (Host, Database Name, Username, Password).
+2. Push repo ke **GitHub pribadi**, pastikan `tec.akselera@gmail.com` ditambahkan sebagai **collaborator**.
+3. Di Hostinger hPanel:
+   - Hubungkan repo GitHub ke Node.js App.
+   - **Build Command:** `npm run build`
+   - **Start Command:** `npm start`
+   - **Environment Variables** (masukkan lewat panel, **bukan** file):
+     - `JWT_SECRET` = (string acak min 32 karakter)
+     - `MYSQL_HOST` = (host MySQL Hostinger, mis. `auth-dbXXX.hostinger.com`)
+     - `MYSQL_PORT` = `3306`
+     - `MYSQL_USER` = (username database)
+     - `MYSQL_PASSWORD` = (password database)
+     - `MYSQL_DATABASE` = (nama database)
+4. **Deploy.** Saat boot pertama, aplikasi otomatis membuat tabel (`app_users`, `app_conversations`, `app_messages`) dan melakukan seeding 8 akun demo.
+5. Tempel URL publik ke checklist Section 0.
+
+### 4b. Vercel (Alternatif)
+*Atau* deploy ke Vercel dengan env `JWT_SECRET` dan `POSTGRES_URL` (bila pakai Vercel Postgres/Supabase).
+
 
 ---
 
