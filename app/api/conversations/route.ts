@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (currentUser) => {
-    const db = await loadDb();
+    const db = await loadDb(currentUser.id);
 
     // Lapis aplikasi: hanya percakapan milik user yang login.
     // Lapis database: RLS Postgres sudah memfilter sebelum sampai di sini.
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       createdAt: now,
       updatedAt: now,
     };
-    await createConversation(conversation);
+    await createConversation(conversation, currentUser.id);
 
     return NextResponse.json({ conversationId: conversation.id });
   });

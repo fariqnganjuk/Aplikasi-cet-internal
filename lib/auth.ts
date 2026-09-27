@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { verifyToken, findUserById, withUser, DbUser } from './db';
+import { verifyToken, findUserById, DbUser } from './db';
 import { AUTH_COOKIE } from './auth-cookie';
 
 export function readTokenFromCookieHeader(cookieHeader: string | null): string | null {
@@ -38,10 +38,10 @@ export async function getSessionUser(): Promise<DbUser | null> {
 /**
  * Guard untuk route handler.
  *
- * Selain memvalidasi sesi, seluruh body handler dieksekusi di dalam
- * `withUser(user.id, ...)` sehingga GUC `app.user_id` terpasang pada
- * koneksi database dan Row Level Security Postgres memfilter baris
- * milik akun lain (Fitur Wajib #5, lapis database).
+ * Memvalidasi sesi (cookie httpOnly atau Bearer fallback) dan meneruskan
+ * user ke handler. Isolasi data di level database diterapkan oleh adapter
+ * lewat `scopeUserId` yang dipass tiap handler ke fungsi `db.*`
+ * (MySQL: WHERE keanggotaan di query; Postgres: RLS + GUC per request).
  */
 export async function withAuth(
   req: NextRequest,
@@ -59,5 +59,5 @@ export async function withAuth(
     );
   }
 
-  return withUser(user.id, () => handler(user));
+  return handler(user);
 }

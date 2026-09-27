@@ -24,8 +24,10 @@ export const AkseleraLogo: React.FC<AkseleraLogoProps> = ({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt="Akselera.Tech Logo"
-        className={`${heights[size]} w-auto`}
+        alt="Akselera.Tech"
+        width={240}
+        height={64}
+        className={`${heights[size]} w-auto max-w-[220px] object-contain`}
         draggable={false}
       />
     </div>

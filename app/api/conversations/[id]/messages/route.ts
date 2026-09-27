@@ -39,9 +39,9 @@ export async function GET(
       );
     }
 
-    // Lapis database: query berjalan di scope user sehingga RLS
-    // hanya meloloskan pesan milik percakapan ini.
-    const messages = await listMessages(conversationId);
+    // Lapis database: query berjalan di scope user sehingga isolasi
+    // selalu diberlakukan (MySQL: WHERE user_a_id=?, MySQL/Postgres: RLS/WHERE).
+    const messages = await listMessages(conversationId, currentUser.id);
     return NextResponse.json({ messages });
   });
 }
@@ -90,7 +90,7 @@ export async function POST(
       isRead: false,
     };
 
-    await insertMessage(newMessage);
+    await insertMessage(newMessage, currentUser.id);
 
     notifyParticipants(participants, {
       type: 'NEW_MESSAGE',

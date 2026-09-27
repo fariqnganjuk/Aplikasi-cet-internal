@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (currentUser) => {
-    const db = await loadDb();
+    const db = await loadDb(currentUser.id);
     const accessibleCount = db.conversations.filter((c) =>
       c.participantIds.includes(currentUser.id)
     ).length;

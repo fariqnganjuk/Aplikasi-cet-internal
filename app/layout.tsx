@@ -30,7 +30,7 @@ export default function RootLayout({
           // Inline sebelum React hydrate agar tidak flash putih di dark mode.
           // eslint-disable-next-line @next/next/no-sync-scripts
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('akselera_tech_theme');if(t!=='dark'&&t!=='light'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('akselera_tech_theme');if(t!=='dark'&&t!=='light'){t='light';}if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}}catch(e){}})();`,
           }}
         />
       </head>
